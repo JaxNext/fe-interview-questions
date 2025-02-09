@@ -1,11 +1,202 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+// Import all .md files from the pages directory
+const pages = await Astro.glob('./*.md');
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// Sort pages by filename/number if needed
+pages.sort((a, b) => {
+  const numA = parseInt(a.url?.split('/').pop() || '0');
+  const numB = parseInt(b.url?.split('/').pop() || '0');
+  return numA - numB;
+});
+
+// Get all unique tags from pages
+const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))].sort();
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>All Pages</title>
+</head>
+<body>
+    <h1>All Pages</h1>
+    
+    <div class="filter-section">
+        <div class="filter-header">
+            <h3>Filter by tags:</h3>
+            <button id="resetFilters" class="reset-button">Reset Filters</button>
+        </div>
+        <div class="tag-container">
+            {allTags.map(tag => (
+                <label class="tag-checkbox">
+                    <input 
+                        type="checkbox" 
+                        value={tag}
+                        data-tag={tag}
+                    />
+                    <span class="tag-label">{tag}</span>
+                </label>
+            ))}
+        </div>
+    </div>
+
+    <ul id="pagesList">
+        {pages.map((page) => (
+            <li data-tags={JSON.stringify(page.frontmatter.tags || [])}>
+                <a href={page.url}>{page.frontmatter.title || 'Untitled Page'}</a>
+            </li>
+        ))}
+    </ul>
+
+    <script>
+        const tagContainer = document.querySelector('.tag-container');
+        const pagesList = document.getElementById('pagesList');
+        const listItems = pagesList.getElementsByTagName('li');
+        const resetButton = document.getElementById('resetFilters');
+
+        function updateVisibility() {
+            const checkboxes = tagContainer.querySelectorAll('input[type="checkbox"]');
+            const selectedTags = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            Array.from(listItems).forEach(item => {
+                const itemTags = JSON.parse(item.dataset.tags);
+                if (selectedTags.length === 0 || selectedTags.some(tag => itemTags.includes(tag))) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        tagContainer.addEventListener('change', updateVisibility);
+
+        resetButton.addEventListener('click', () => {
+            const checkboxes = tagContainer.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            updateVisibility();
+        });
+    </script>
+</body>
+</html>
+
+<style>
+    body {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        font-family: system-ui, sans-serif;
+    }
+    ul {
+        line-height: 1.8;
+    }
+    .filter-section {
+        margin: 2rem 0;
+        background: #f5f5f5;
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .filter-section h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #333;
+    }
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .tag-checkbox {
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    .tag-checkbox input {
+        display: none;
+    }
+    .tag-label {
+        background: #fff;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .tag-checkbox input:checked + .tag-label {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+    }
+    .tag-label:hover {
+        background: #f0f0f0;
+    }
+    .tag-checkbox input:checked + .tag-label:hover {
+        background: #1d4ed8;
+    }
+    .reset-button {
+        background: #e5e7eb;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #4b5563;
+        transition: all 0.2s ease;
+    }
+    .reset-button:hover {
+        background: #d1d5db;
+    }
+
+    #pagesList {
+        list-style: none;
+        padding: 0;
+        margin: 2rem 0;
+    }
+
+    #pagesList li {
+        margin-bottom: 1rem;
+        transition: transform 0.2s ease;
+    }
+
+    #pagesList li:hover {
+        transform: translateX(5px);
+    }
+
+    #pagesList a {
+        display: block;
+        text-decoration: none;
+        color: #2563eb;
+        font-size: 1.1rem;
+        padding: 0.75rem 1rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+
+    #pagesList a:hover {
+        color: #1d4ed8;
+        background: #f8fafc;
+        border-color: #d1d5db;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Optional: Add a subtle indicator for pages with tags */
+    #pagesList li[data-tags*='"'] a::after {
+        content: '•••';
+        margin-left: 0.5rem;
+        color: #94a3b8;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+    }
+</style> 
