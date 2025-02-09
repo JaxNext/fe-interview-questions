@@ -1,0 +1,97 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+const { frontmatter } = Astro.props;
+const { title, quiz } = frontmatter;
+---
+
+<BaseLayout title={title}>
+  <div class="quiz-container">
+    <h1>{title}</h1>
+    
+    <div class="question">
+      <h2>题目</h2>
+      <p>{quiz.question}</p>
+      
+      <div class="options">
+        {quiz.options.map((option, index) => (
+          <div class="option">
+            <span class="option-number">{index + 1}.</span>
+            <span class="option-text">{option}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div class="answer">
+      <h2>正确答案</h2>
+      <p>
+        {quiz.answer.map(index => index + 1).join('、')}
+      </p>
+    </div>
+
+    <div class="explanation">
+      <h2>解析</h2>
+      {quiz.explanation.map(item => (
+        <div class="explanation-item">
+          <p class="point">{item.point}</p>
+          {item.details && (
+            <ul>
+              {item.details.map(detail => (
+                <li>{detail}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .quiz-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .question, .answer, .explanation {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+  }
+
+  .options {
+    margin: 1rem 0;
+  }
+
+  .option {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .option-number {
+    font-weight: bold;
+  }
+
+  .explanation-item {
+    margin: 1rem 0;
+  }
+
+  .point {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  ul {
+    margin: 0.5rem 0;
+    padding-left: 2rem;
+  }
+
+  li {
+    margin: 0.25rem 0;
+  }
+</style> 
