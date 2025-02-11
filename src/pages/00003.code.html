@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function countPassengers(arr) {
+            // 方法 1
+            // if (!arr?.length) return 0
+            // let res = 0
+            // for (const item of arr) {
+            //     res += item[0] - item[1]
+            // }
+            // return res
+
+            // 方法 2
+            return arr.reduce((a, b) => a + b[0] - b[1], 0)
+        }
+        console.log(countPassengers([[10,0],[3,5],[5,8]]))
+        console.log(countPassengers([[3,0],[9,1],[4,10],[12,2],[6,1],[7,10]]))
+        console.log(countPassengers([[3,0],[9,1],[4,8],[12,2],[6,1],[7,8]]))
+        
+        
+    </script>
+</body>
+</html>

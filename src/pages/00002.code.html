@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function resort(sentence) {
+            if (!sentence) return ''
+            const arr = sentence.split(' ')
+            arr.sort((a, b) => {
+                const aNum = a.match(/\d+/)[0]
+                const bNum = b.match(/\d+/)[0]
+                return aNum - bNum
+            })
+            return arr.join(' ')
+        }
+        console.log(resort('is2 Thi1s T4est 3a'))
+        console.log(resort(''))
+        
+        // Add more test cases
+        console.log(resort('4of Fo1r pe6ople g3ood th5e the2')) // Output: 'Fo1r the2 g3ood 4of th5e pe6ople'
+        console.log(resort('1First')) // Single word test
+        console.log(resort('2Second 1First 3Third')) // Simple ordering test
+        console.log(resort('b2 a1 c4 d3')) // Single character words test
+        
+    </script>
+</body>
+</html>
