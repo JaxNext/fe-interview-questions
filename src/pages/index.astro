@@ -10,7 +10,7 @@ pages.sort((a, b) => {
 });
 
 // Get all unique tags from pages
-const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))].sort();
+const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))].filter(tag => tag).sort();
 ---
 
 <html lang="en">
