@@ -63,7 +63,7 @@ const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))]
             
             Array.from(listItems).forEach(item => {
                 const itemTags = JSON.parse(item.dataset.tags);
-                if (selectedTags.length === 0 || selectedTags.some(tag => itemTags.includes(tag))) {
+                if (selectedTags.length === 0 || selectedTags.every(tag => itemTags.includes(tag))) {
                     item.style.display = '';
                 } else {
                     item.style.display = 'none';
