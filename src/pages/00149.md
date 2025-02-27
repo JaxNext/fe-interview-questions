@@ -1,4 +1,5 @@
 ---
+layout: ../layouts/MarkdownLayout.astro
 title: '00000 模板'
 tags: ['未完成']
 ---

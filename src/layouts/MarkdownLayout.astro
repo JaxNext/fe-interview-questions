@@ -1,0 +1,93 @@
+---
+interface Props {
+  frontmatter: {
+    title: string;
+    tags?: string[];
+  };
+}
+
+const { frontmatter } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{frontmatter.title}</title>
+  </head>
+  <body>
+    <main>
+      <article>
+        <h1>{frontmatter.title}</h1>
+        {frontmatter.tags && (
+          <div class="tags">
+            {frontmatter.tags.map((tag: string) => (
+              <span class="tag">{tag}</span>
+            ))}
+          </div>
+        )}
+        <div class="back-link">
+          <a href="/">← Back to all pages</a>
+        </div>
+        <slot />
+      </article>
+      <div class="back-link">
+        <a href="/">← Back to all pages</a>
+      </div>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.6;
+  }
+
+  article {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  h1 {
+    margin-top: 0;
+    color: #2563eb;
+  }
+
+  .tags {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0 2rem;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    background: #f3f4f6;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #4b5563;
+  }
+
+  .back-link {
+    margin-top: 2rem;
+  }
+
+  .back-link a {
+    color: #2563eb;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .back-link a:hover {
+    text-decoration: underline;
+  }
+</style> 
