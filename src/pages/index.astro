@@ -11,6 +11,12 @@ pages.sort((a, b) => {
 
 // Get all unique tags from pages
 const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))].filter(tag => tag).sort();
+// move '重点' to the start of the array
+const firstTagIndex = allTags.findIndex(tag => tag === '重点');
+if (firstTagIndex !== -1) {
+    allTags.splice(firstTagIndex, 1);
+    allTags.unshift('重点');
+}
 ---
 
 <html lang="en">
@@ -20,24 +26,35 @@ const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))]
     <title>All Pages</title>
 </head>
 <body>
+    <div style="display: flex; justify-content: space-between;">
     <h1>All Pages</h1>
-    
-    <div class="filter-section">
-        <div class="filter-header">
-            <h3>Filter by tags:</h3>
-            <button id="resetFilters" class="reset-button">Reset Filters</button>
+        <div class="filter-toggle-container">
+            <button id="toggleFilters" class="toggle-button">
+                <span class="toggle-icon">
+                    <svg viewBox="64 64 896 896" focusable="false" data-icon="filter" width="1em" height="1em" fill="currentColor" aria-hidden="true">
+                        <path d="M349 838c0 17.7 14.2 32 31.8 32h262.4c17.6 0 31.8-14.3 31.8-32V642H349v196zm531.1-684H143.9c-24.5 0-39.8 26.7-27.5 48l221.3 376h348.8l221.3-376c12.1-21.3-3.2-48-27.7-48z"></path>
+                    </svg>
+                </span>
+                <span class="toggle-text">Filter</span>
+            </button>
         </div>
-        <div class="tag-container">
+    </div>
+    
+    <div id="filterSection" class="filter-section" style="display: none;">
+
+        <div class="tag-selector">
+            <div id="selectedTags" class="selected-tags"></div>
+            <div style="display: flex; gap: 0.5rem;">
+                <div class="dropdown-container">
+                    <input type="text" id="tagInput" placeholder="Search and select tags..." />
+                    <div id="tagDropdown" class="dropdown-content">
             {allTags.map(tag => (
-                <label class="tag-checkbox">
-                    <input 
-                        type="checkbox" 
-                        value={tag}
-                        data-tag={tag}
-                    />
-                    <span class="tag-label">{tag}</span>
-                </label>
-            ))}
+                            <div class="dropdown-item" data-value={tag} tabindex="0">{tag}</div>
+                        ))}
+                    </div>
+                </div>
+                <button id="resetFilters" class="reset-button">Reset</button>
+            </div>
         </div>
     </div>
 
@@ -50,33 +67,327 @@ const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))]
     </ul>
 
     <script>
-        const tagContainer = document.querySelector('.tag-container');
+        // Elements
+        const tagInput = document.getElementById('tagInput');
+        const tagDropdown = document.getElementById('tagDropdown');
+        const dropdownItems = tagDropdown.querySelectorAll('.dropdown-item');
+        const selectedTagsContainer = document.getElementById('selectedTags');
         const pagesList = document.getElementById('pagesList');
         const listItems = pagesList.getElementsByTagName('li');
         const resetButton = document.getElementById('resetFilters');
+        const dropdownContainer = document.querySelector('.dropdown-container');
+        const toggleButton = document.getElementById('toggleFilters');
+        const filterSection = document.getElementById('filterSection');
 
-        function updateVisibility() {
-            const checkboxes = tagContainer.querySelectorAll('input[type="checkbox"]');
-            const selectedTags = Array.from(checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-            
-            Array.from(listItems).forEach(item => {
-                const itemTags = JSON.parse(item.dataset.tags);
-                if (selectedTags.length === 0 || selectedTags.every(tag => itemTags.includes(tag))) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
+        // Track selected tags
+        let selectedTags = [];
+        let isDropdownOpen = false;
+        
+        // Load saved filters from localStorage
+        function loadSavedFilters() {
+            try {
+                const savedFilters = localStorage.getItem('selectedTags');
+                if (savedFilters) {
+                    selectedTags = JSON.parse(savedFilters);
+                    updateSelectedTagsDisplay();
+                    updateVisibility();
+                    
+                    // Update toggle button state if there are filters
+                    if (selectedTags.length > 0) {
+                        toggleButton.classList.add('has-filters');
+                        // Show filter section if there are saved filters
+                        filterSection.style.display = 'block';
+                        toggleButton.classList.add('active');
+                    }
                 }
-            });
+            } catch (error) {
+                console.error('Error loading saved filters:', error);
+                // Reset if there's an error
+                selectedTags = [];
+            }
+        }
+        
+        // Save filters to localStorage
+        function saveFilters() {
+            try {
+                localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
+            } catch (error) {
+                console.error('Error saving filters:', error);
+            }
+        }
+        
+        // Load saved filters on page load
+        loadSavedFilters();
+        
+        // Toggle filter section
+        toggleButton.addEventListener('click', () => {
+            const isVisible = filterSection.style.display !== 'none';
+            filterSection.style.display = isVisible ? 'none' : 'block';
+            
+            // Update toggle button appearance
+            toggleButton.classList.toggle('active', !isVisible);
+        });
+
+        // Toggle dropdown visibility
+        function toggleDropdown(show) {
+            isDropdownOpen = show;
+            tagDropdown.style.display = show ? 'block' : 'none';
+            
+            if (show) {
+                // Add active class to container when dropdown is open
+                dropdownContainer.classList.add('active');
+            } else {
+                dropdownContainer.classList.remove('active');
+            }
         }
 
-        tagContainer.addEventListener('change', updateVisibility);
+        // Show dropdown on input focus
+        tagInput.addEventListener('focus', () => {
+            toggleDropdown(true);
+            filterDropdown();
+        });
 
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown-container')) {
+                toggleDropdown(false);
+            }
+        });
+
+        // Prevent dropdown from closing when clicking inside it
+        tagDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Filter dropdown items as user types
+        tagInput.addEventListener('input', filterDropdown);
+
+        function filterDropdown() {
+            const filter = tagInput.value.toLowerCase();
+            let hasVisibleItems = false;
+            
+            dropdownItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const shouldShow = text.includes(filter) && !selectedTags.includes(item.dataset.value);
+                
+                item.style.display = shouldShow ? '' : 'none';
+                if (shouldShow) hasVisibleItems = true;
+            });
+            
+            // If no items match, show a "no results" message
+            if (!hasVisibleItems && isDropdownOpen) {
+                // Remove existing no-results message if any
+                const existingNoResults = tagDropdown.querySelector('.no-results');
+                if (existingNoResults) existingNoResults.remove();
+                
+                // Add no-results message
+                const noResults = document.createElement('div');
+                noResults.className = 'dropdown-item no-results';
+                noResults.textContent = 'No matching tags';
+                noResults.style.color = 'rgba(0, 0, 0, 0.45)';
+                noResults.style.cursor = 'default';
+                tagDropdown.appendChild(noResults);
+            } else {
+                // Remove no-results message if items are found
+                const existingNoResults = tagDropdown.querySelector('.no-results');
+                if (existingNoResults) existingNoResults.remove();
+            }
+        }
+
+        // Handle dropdown item selection
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const tag = item.dataset.value;
+                
+                // Only add if not already selected
+                if (!selectedTags.includes(tag)) {
+                    selectedTags.push(tag);
+                    updateSelectedTagsDisplay();
+                    updateVisibility();
+                    
+                    // Update toggle button to show active state when filters are applied
+                    toggleButton.classList.add('has-filters');
+                    
+                    // Save to localStorage
+                    saveFilters();
+                }
+                
+                // Clear input but keep dropdown open (Ant Design behavior)
+                tagInput.value = '';
+                tagInput.focus(); // Keep focus on input
+                filterDropdown();
+            });
+        });
+
+        // Update the selected tags display
+        function updateSelectedTagsDisplay() {
+            selectedTagsContainer.innerHTML = '';
+            
+            selectedTags.forEach(tag => {
+                const tagElement = document.createElement('div');
+                tagElement.className = 'selected-tag';
+                tagElement.style.display = 'inline-flex';
+                tagElement.style.alignItems = 'center';
+                tagElement.style.background = '#f0f0f0';
+                tagElement.style.color = 'rgba(0, 0, 0, 0.85)';
+                tagElement.style.padding = '0.25rem 0.5rem';
+                tagElement.style.borderRadius = '2px';
+                tagElement.style.fontSize = '0.75rem';
+                tagElement.style.marginRight = '0.25rem';
+                tagElement.style.marginBottom = '0.25rem';
+                tagElement.style.border = '1px solid #e8e8e8';
+                tagElement.style.transition = 'all 0.3s';
+                tagElement.style.userSelect = 'none';
+                tagElement.textContent = tag;
+                
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-tag';
+                removeButton.innerHTML = '×';
+                removeButton.style.marginLeft = '0.25rem';
+                removeButton.style.background = 'none';
+                removeButton.style.border = 'none';
+                removeButton.style.color = 'rgba(0, 0, 0, 0.45)';
+                removeButton.style.cursor = 'pointer';
+                removeButton.style.fontSize = '0.75rem';
+                removeButton.style.lineHeight = '1';
+                removeButton.style.padding = '0 0.2rem';
+                removeButton.style.borderRadius = '50%';
+                removeButton.style.transition = 'all 0.3s';
+                removeButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Remove tag from selection
+                    selectedTags = selectedTags.filter(t => t !== tag);
+                    updateSelectedTagsDisplay();
+                    updateVisibility();
+                    filterDropdown();
+                    
+                    // Update toggle button state
+                    toggleButton.classList.toggle('has-filters', selectedTags.length > 0);
+                    
+                    // Save to localStorage
+                    saveFilters();
+                });
+                
+                tagElement.appendChild(removeButton);
+                selectedTagsContainer.appendChild(tagElement);
+            });
+            
+            // Update input placeholder based on selection
+            if (selectedTags.length > 0) {
+                tagInput.placeholder = 'Add more tags...';
+            } else {
+                tagInput.placeholder = 'Search and select tags...';
+            }
+        }
+
+        // Update page visibility based on selected tags
+        function updateVisibility() {
+            Array.from(listItems).forEach(item => {
+                const itemTags = JSON.parse(item.dataset.tags);
+                
+                if (selectedTags.length === 0) {
+                    // Show all items if no tags selected
+                    item.style.display = '';
+                } else {
+                    // Show item if it has ALL of the selected tags (AND logic)
+                    const hasAllSelectedTags = selectedTags.every(tag => itemTags.includes(tag));
+                    item.style.display = hasAllSelectedTags ? '' : 'none';
+                }
+            });
+            
+            // Update filter count badge
+            updateFilterCountBadge();
+        }
+        
+        // Update the filter count badge on the toggle button
+        function updateFilterCountBadge() {
+            const existingBadge = toggleButton.querySelector('.filter-count');
+            
+            if (selectedTags.length > 0) {
+                if (existingBadge) {
+                    existingBadge.textContent = selectedTags.length;
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'filter-count';
+                    badge.textContent = selectedTags.length;
+                    toggleButton.appendChild(badge);
+                }
+            } else if (existingBadge) {
+                existingBadge.remove();
+            }
+        }
+
+        // Reset filters
         resetButton.addEventListener('click', () => {
-            const checkboxes = tagContainer.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(cb => cb.checked = false);
+            selectedTags = [];
+            tagInput.value = '';
+            tagInput.placeholder = 'Search and select tags...';
+            updateSelectedTagsDisplay();
             updateVisibility();
+            filterDropdown();
+            tagInput.focus(); // Focus on input after reset (Ant Design behavior)
+            
+            // Update toggle button state
+            toggleButton.classList.remove('has-filters');
+            
+            // Clear localStorage
+            localStorage.removeItem('selectedTags');
+        });
+        
+        // Add keyboard navigation (Ant Design behavior)
+        tagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toggleDropdown(false);
+            } else if (e.key === 'ArrowDown' && isDropdownOpen) {
+                // Find first visible dropdown item and focus it
+                const visibleItems = Array.from(dropdownItems).filter(
+                    item => item.style.display !== 'none' && !item.classList.contains('no-results')
+                );
+                if (visibleItems.length > 0) {
+                    visibleItems[0].focus();
+                    e.preventDefault();
+                }
+            } else if (e.key === 'Backspace' && tagInput.value === '' && selectedTags.length > 0) {
+                // Remove the last tag when pressing backspace in empty input
+                selectedTags.pop();
+                updateSelectedTagsDisplay();
+                updateVisibility();
+                filterDropdown();
+                
+                // Save to localStorage
+                saveFilters();
+            }
+        });
+        
+        // Add keyboard navigation for dropdown items
+        tagDropdown.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toggleDropdown(false);
+                tagInput.focus();
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                
+                const visibleItems = Array.from(dropdownItems).filter(
+                    item => item.style.display !== 'none' && !item.classList.contains('no-results')
+                );
+                
+                if (visibleItems.length === 0) return;
+                
+                const currentIndex = visibleItems.indexOf(document.activeElement);
+                let nextIndex;
+                
+                if (e.key === 'ArrowDown') {
+                    nextIndex = currentIndex < 0 || currentIndex >= visibleItems.length - 1 ? 0 : currentIndex + 1;
+                } else {
+                    nextIndex = currentIndex <= 0 ? visibleItems.length - 1 : currentIndex - 1;
+                }
+                
+                visibleItems[nextIndex].focus();
+            } else if (e.key === 'Enter' && document.activeElement !== tagInput) {
+                // Simulate click on focused dropdown item
+                document.activeElement.click();
+            }
         });
     </script>
 </body>
@@ -92,68 +403,161 @@ const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))]
     ul {
         line-height: 1.8;
     }
+    
+    /* Filter toggle button */
+    .filter-toggle-container {
+        margin: 1.5rem 0;
+    }
+    
+    .toggle-button {
+        display: inline-flex;
+        align-items: center;
+        background: white;
+        border: 1px solid #d9d9d9;
+        padding: 0.5rem 1rem;
+        border-radius: 2px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.65);
+        transition: all 0.3s;
+        position: relative;
+    }
+    
+    .toggle-button:hover {
+        color: #40a9ff;
+        border-color: #40a9ff;
+    }
+    
+    .toggle-button.active {
+        color: #1890ff;
+        border-color: #1890ff;
+        background: #e6f7ff;
+    }
+    
+    .toggle-button.has-filters {
+        color: #1890ff;
+        border-color: #1890ff;
+    }
+    
+    .toggle-icon {
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .filter-count {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #1890ff;
+        color: white;
+        border-radius: 10px;
+        min-width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        padding: 0 6px;
+        box-shadow: 0 0 0 1px white;
+    }
+    
     .filter-section {
-        margin: 2rem 0;
+        margin: 1.5rem 0;
         background: #f5f5f5;
         padding: 1.5rem;
         border-radius: 8px;
-    }
-    .filter-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
+        border: 1px solid #e8e8e8;
+        transition: all 0.3s;
     }
     .filter-section h3 {
         margin: 0;
         font-size: 1.1rem;
         color: #333;
     }
-    .tag-container {
+    
+    /* Ant Design-inspired dropdown styling */
+    .tag-selector {
+        margin-bottom: 1rem;
+    }
+    
+    .dropdown-container {
+        position: relative;
+        width: 100%;
+    }
+    
+    #tagInput {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid #d9d9d9;
+        font-size: 0.875rem;
+        box-sizing: border-box;
+        transition: all 0.3s;
+        box-shadow: none;
+        outline: none;
+    }
+    
+    #tagInput:hover {
+        border-color: #40a9ff;
+    }
+    
+    #tagInput:focus {
+        border-color: #40a9ff;
+        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+    
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        width: 100%;
+        max-height: 256px;
+        overflow-y: auto;
+        background: white;
+        border-radius: 2px;
+        box-shadow: 0 3px 6px -4px rgba(0,0,0,0.12), 0 6px 16px 0 rgba(0,0,0,0.08), 0 9px 28px 8px rgba(0,0,0,0.05);
+        z-index: 10;
+        margin-top: 4px;
+        padding: 4px 0;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.85);
+        transition: background 0.3s;
+    }
+    
+    .dropdown-item:hover {
+        background: #f5f5f5;
+    }
+    
+    .dropdown-item:focus {
+        background: #e6f7ff;
+        outline: none;
+    }
+    
+    .selected-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .tag-checkbox {
-        display: inline-flex;
-        align-items: center;
-        cursor: pointer;
-    }
-    .tag-checkbox input {
-        display: none;
-    }
-    .tag-label {
-        background: #fff;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        border: 1px solid #ddd;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-        user-select: none;
-    }
-    .tag-checkbox input:checked + .tag-label {
-        background: #2563eb;
-        color: white;
-        border-color: #2563eb;
-    }
-    .tag-label:hover {
-        background: #f0f0f0;
-    }
-    .tag-checkbox input:checked + .tag-label:hover {
-        background: #1d4ed8;
+        gap: 0.25rem;
+        margin-bottom: 0.75rem;
     }
     .reset-button {
-        background: #e5e7eb;
-        border: none;
+        background: white;
+        border: 1px solid #d9d9d9;
         padding: 0.4rem 0.8rem;
-        border-radius: 6px;
+        border-radius: 2px;
         cursor: pointer;
-        font-size: 0.9rem;
-        color: #4b5563;
-        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.65);
+        transition: all 0.3s;
     }
+    
     .reset-button:hover {
-        background: #d1d5db;
+        color: #40a9ff;
+        border-color: #40a9ff;
     }
 
     #pagesList {
@@ -174,29 +578,34 @@ const allTags = [...new Set(pages.flatMap(page => page.frontmatter.tags || []))]
     #pagesList a {
         display: block;
         text-decoration: none;
-        color: #2563eb;
-        font-size: 1.1rem;
+        color: #1890ff;
+        font-size: 1rem;
         padding: 0.75rem 1rem;
         background: white;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        transition: all 0.2s ease;
+        border-radius: 2px;
+        border: 1px solid #e8e8e8;
+        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.015);
+        transition: all 0.3s;
     }
 
     #pagesList a:hover {
-        color: #1d4ed8;
-        background: #f8fafc;
-        border-color: #d1d5db;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        color: #40a9ff;
+        border-color: #40a9ff;
     }
 
     /* Optional: Add a subtle indicator for pages with tags */
     #pagesList li[data-tags*='"'] a::after {
         content: '•••';
         margin-left: 0.5rem;
-        color: #94a3b8;
+        color: rgba(0, 0, 0, 0.45);
         font-size: 0.8rem;
         letter-spacing: 1px;
+    }
+    
+    /* No results message */
+    .no-results {
+        text-align: center;
+        padding: 8px;
+        color: rgba(0, 0, 0, 0.45);
     }
 </style> 
